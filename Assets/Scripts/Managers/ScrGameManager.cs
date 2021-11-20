@@ -36,12 +36,6 @@ public class ScrGameManager : MonoBehaviour
         ScrEventManager.Instance.onBlockDestroyed += AddPoints;
     }
 
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
-
     /// <summary>
     ///     Adds up the points and updates the points
     ///     text UI
