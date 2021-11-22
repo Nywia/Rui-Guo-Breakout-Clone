@@ -13,7 +13,9 @@ GameObject:
   - component: {fileID: 2876792697169550701}
   - component: {fileID: 2876792697169550700}
   - component: {fileID: 2876792697169550689}
-  - component: {fileID: 2876792697169550688}
+  - component: {fileID: 7740912958573676391}
+  - component: {fileID: 8421983478325289753}
+  - component: {fileID: 3252031214708919208}
   m_Layer: 0
   m_Name: Ball
   m_TagString: Untagged
@@ -113,7 +115,53 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 56
   m_CollisionDetection: 0
---- !u!114 &2876792697169550688
+--- !u!114 &7740912958573676391
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2876792697169550703}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9b91ecbcc199f4492b9a91e820070131, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  sceneId: 0
+  serverOnly: 0
+  visible: 0
+  m_AssetId: c44f9966da63cda42a93012860aeb49f
+  hasSpawned: 0
+--- !u!114 &8421983478325289753
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2876792697169550703}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2f74aedd71d9a4f55b3ce499326d45fb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  syncMode: 0
+  syncInterval: 0.1
+  clientAuthority: 1
+  sendInterval: 0.05
+  syncPosition: 1
+  syncRotation: 1
+  syncScale: 0
+  interpolatePosition: 1
+  interpolateRotation: 1
+  interpolateScale: 0
+  bufferTimeMultiplier: 1
+  bufferSizeLimit: 64
+  catchupThreshold: 4
+  catchupMultiplier: 0.1
+  showGizmos: 0
+  showOverlay: 0
+  overlayColor: {r: 0, g: 0, b: 0, a: 0.5}
+--- !u!114 &3252031214708919208
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -125,10 +173,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 396bd4043741e1a409236a97b282f574, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  syncMode: 0
+  syncInterval: 0.1
+  Paddle: {fileID: 0}
   Speed: 10
   MaxShootAngle: 45
+  SpawnLocation: {x: 0, y: 0, z: 0}
   ShowDebugMessages: 0
-  ShowMaxShootAngle: 0
-  MaxShootAngleColour: {r: 0.99941254, g: 0, b: 1, a: 1}
-  ShowSpawnAngle: 0
-  SpawnAngleColour: {r: 1, g: 0, b: 0, a: 1}
+  ShowMaxShootAngle: 1
+  MaxShootAngleColour: {r: 0.6764121, g: 0, b: 1, a: 0.39215687}
+  ShowSpawnAngle: 1
+  SpawnAngleColour: {r: 1, g: 0, b: 0, a: 0.39215687}

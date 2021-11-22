@@ -1,9 +1,10 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Mirror;
 
 [RequireComponent(typeof(Rigidbody))]
-public class ScrBall : MonoBehaviour
+public class ScrBall : NetworkBehaviour
 {
     private enum GizmosType
     {
@@ -17,8 +18,7 @@ public class ScrBall : MonoBehaviour
     [SerializeField] private float MaxShootAngle;
 
     private Rigidbody RB;
-    private GameObject Paddle;
-    private Vector3 SpawnLocation;
+    public Vector3 SpawnLocation;
     private Vector3 Direction;
     private bool Launched;
 
@@ -35,19 +35,20 @@ public class ScrBall : MonoBehaviour
     void Start()
     {
         RB = GetComponent<Rigidbody>();
-        Paddle = FindObjectOfType<ScrPaddle>().gameObject;
-        SpawnLocation = Paddle.transform.TransformPoint(new Vector3(0.0f, 1.0f, 0.0f));
+        RB.isKinematic = true;
         Restart();
     }
 
     // Update is called once per frame
     void Update()
     {
-        if (Input.GetKeyUp(KeyCode.Space))
+
+        if (!hasAuthority)
         {
-            LaunchBall();
+            return;
         }
 
+        // Check if the ball has been launched by the player or not
         if (Launched)
         {
             // Ensure rigidbody is always at the same speed
@@ -55,7 +56,6 @@ public class ScrBall : MonoBehaviour
         }
         else
         {
-            SpawnLocation = Paddle.transform.TransformPoint(new Vector3(0.0f, 1.0f, 0.0f));
             transform.position = SpawnLocation;
         }
     }
@@ -68,50 +68,38 @@ public class ScrBall : MonoBehaviour
     public void Restart()
     {
         // Reset back to spawn location and choose a random direction
-        SpawnLocation = Paddle.transform.TransformPoint(new Vector3(0.0f, 1.0f, 0.0f));
         transform.position = SpawnLocation;
         RB.velocity = Vector3.zero;
         Launched = false;
     }
 
+    /// <summary>
+    ///     Launches the ball upwards within the given 
+    ///     max shooting angle
+    /// </summary>
     public void LaunchBall()
     {
+        // Restart if player tries launching ball when it's already launched
+        if (Launched)
+        {
+            Restart();
+            return;
+        }
+
         Launched = true;
-        Direction = Random.insideUnitSphere.normalized;
+        RB.isKinematic = false;
 
-        // Get the angle of that direction relative to world up
-        float ShootAngle = GetAngleToWorldUp(Direction);
+        // Reset rotation before setting new rotation
+        RB.rotation = Quaternion.identity;
+        RB.rotation = Quaternion.Euler(0.0f, 0.0f, Random.Range(-MaxShootAngle, MaxShootAngle));
 
-        // Ensure the angle is within the allowed MaxShootAngle
-        while (ShootAngle > MaxShootAngle || ShootAngle == 0)
-        {
-            Direction = Random.insideUnitSphere.normalized;
-            ShootAngle = GetAngleToWorldUp(Direction);
-        }
-
-        Direction.z = 0.0f;
-
-        if (ShowDebugMessages)
-        {
-            Debug.Log("Spawn angle: " + GetAngleToWorldUp(Direction));
-        }
-
-        RB.velocity = Direction.normalized * Speed;
+        RB.velocity = transform.up * Speed;
     }
 
     private void OnBecameInvisible()
     {
         // Restart if the ball can no longer be seen
         Restart();
-    }
-
-    /// <summary>
-    ///     Returns the angle of the given vector compared
-    ///     to world up
-    /// </summary>
-    private float GetAngleToWorldUp(Vector3 vector)
-    {
-        return Vector3.Angle(transform.position + Vector3.up, vector);
     }
 
     #region Gizmos

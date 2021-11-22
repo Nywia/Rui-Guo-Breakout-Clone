@@ -1,8 +1,9 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Mirror;
 
-public class ScrBlockSpawner : MonoBehaviour
+public class ScrBlockSpawner : NetworkBehaviour
 {
     private enum GizmosType
     {
@@ -28,17 +29,20 @@ public class ScrBlockSpawner : MonoBehaviour
     [SerializeField] private Vector3 SpawnSize;
 
     // Start is called before the first frame update
-    void Start()
+    public override void OnStartServer()
     {
-        BlockRenderer = BlockPrefab.GetComponent<Renderer>();
+        base.OnStartServer();
 
+        BlockRenderer = BlockPrefab.GetComponent<Renderer>();
         SpawnBlocks();
     }
 
-    // Update is called once per frame
-    void Update()
+    public override void OnStartClient()
     {
-        
+        base.OnStartClient();
+
+        BlockRenderer = BlockPrefab.GetComponent<Renderer>();
+        SetBlocks();
     }
 
     /// <summary>
@@ -46,7 +50,8 @@ public class ScrBlockSpawner : MonoBehaviour
     ///     BlockPrefab from the current position of 
     ///     the spawner
     /// </summary>
-    private void SpawnBlocks()
+    [Server]
+    public void SpawnBlocks()
     {
         Vector3 position = transform.position;
 
@@ -77,9 +82,40 @@ public class ScrBlockSpawner : MonoBehaviour
 
                 // Set the blocks colour to be based on the colour gradient
                 blockRenderer.material.color = ColourGradient.Evaluate(y * (1.0f / Rows));
+
+                NetworkServer.Spawn(go);
             }
         }
+
+        RpcSetBlocks();
     }
+
+    [ClientRpc]
+    private void RpcSetBlocks() => SetBlocks();
+
+    [Client]
+    public void SetBlocks()
+    {
+        Vector3 position = transform.position;
+
+        foreach (ScrBlock block in FindObjectsOfType<ScrBlock>())
+        {
+            int gridPosX = block.GridPosition.x;
+            int gridPosY = block.GridPosition.y;
+
+            Renderer blockRenderer = block.gameObject.GetComponent<Renderer>();
+            float blockSizeX = blockRenderer.bounds.size.x;
+            float blockSizeY = blockRenderer.bounds.size.y;
+
+            // Sets the block to a position offset by the size and current column/row it's on
+            block.transform.position = position - new Vector3((blockSizeX + OffsetX) * gridPosX, (blockSizeY + OffsetY) * gridPosY);
+            block.transform.parent = transform;
+
+            // Set the blocks colour to be based on the colour gradient
+            blockRenderer.material.color = ColourGradient.Evaluate(gridPosY * (1.0f / Rows));
+        }
+    }
+
 
     #region Gizmos
     private void OnDrawGizmos()

@@ -1,9 +1,10 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Mirror;
 using TMPro;
 
-public class ScrGameManager : MonoBehaviour
+public class ScrGameManager : NetworkBehaviour
 {
     [SerializeField] private TextMeshProUGUI PointsText;
     [SerializeField] private float PointsMultiplier;
@@ -11,8 +12,10 @@ public class ScrGameManager : MonoBehaviour
     private float CurrentPoints;
 
     // Start is called before the first frame update
-    void Start()
+    public override void OnStartServer()
     {
+        base.OnStartServer();
+
         // Check for missing refernce
         if (!PointsText)
         {
