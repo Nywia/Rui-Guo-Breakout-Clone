@@ -35,8 +35,34 @@ public class ScrGameManager : NetworkBehaviour
                 Debug.LogError(PointsText.gameObject + " does not have a TextMeshProUGUI component!");
             }
         }
+    }
 
+    public override void OnStopServer()
+    {
+        base.OnStopServer();
+
+        // Reset points when server closes
+        CurrentPoints = 0;
+        PointsText.text = "Points: " + Mathf.CeilToInt(CurrentPoints);
+    }
+
+    public override void OnStopClient()
+    {
+        base.OnStopClient();
+
+        // Reset points when client closes
+        CurrentPoints = 0;
+        PointsText.text = "Points: " + Mathf.CeilToInt(CurrentPoints);
+    }
+
+    private void OnEnable()
+    {
         ScrEventManager.Instance.onBlockDestroyed += AddPoints;
+    }
+
+    private void OnDisable()
+    {
+        ScrEventManager.Instance.onBlockDestroyed -= AddPoints;
     }
 
     /// <summary>
@@ -44,9 +70,17 @@ public class ScrGameManager : NetworkBehaviour
     ///     text UI
     /// </summary>
     /// <param name="points">The amount of points to add</param>
+    [Server]
     private void AddPoints(float points)
     {
         CurrentPoints += points * PointsMultiplier;
         PointsText.text = "Points: " + Mathf.CeilToInt(CurrentPoints);
+        RpcAddPoints(CurrentPoints);
+    }
+
+    [ClientRpc]
+    private void RpcAddPoints(float points)
+    {
+        PointsText.text = "Points: " + Mathf.CeilToInt(points);
     }
 }

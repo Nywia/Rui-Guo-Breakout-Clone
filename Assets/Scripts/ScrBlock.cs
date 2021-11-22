@@ -36,6 +36,8 @@ public class ScrBlock : NetworkBehaviour
         }
 
         RpcDestroyBlock();
+        ScrEventManager.Instance.BlockDestroyed(Points);
+        NetworkServer.Destroy(gameObject);
     }
 
     [ClientRpc]
@@ -45,9 +47,6 @@ public class ScrBlock : NetworkBehaviour
         {
             Debug.Log("RpcDestroyBlock");
         }
-
-        ScrEventManager.Instance.BlockDestroyed(Points);
-        NetworkServer.Destroy(gameObject);
     }
 
     private void OnDestroy()
