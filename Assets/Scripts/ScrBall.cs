@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using Mirror;
 
-[RequireComponent(typeof(Rigidbody))]
+[RequireComponent(typeof(Rigidbody), typeof(AudioSource))]
 public class ScrBall : NetworkBehaviour
 {
     public Vector3 SpawnLocation;
@@ -13,9 +13,18 @@ public class ScrBall : NetworkBehaviour
     [SerializeField] private float MaxShootAngle;
 
     private Rigidbody RB;
-
     private float ShootAngle;
     private bool Launched;
+
+    [Header("Ball Juice")]
+    [SerializeField] private AnimationCurve ScaleCurve;
+
+    [Header("Ball Audio")]
+    private AudioSource SFXSource;
+    private List<AudioClip> SFXBallSpawn = new List<AudioClip>();
+    private List<AudioClip> SFXBallLaunch = new List<AudioClip>();
+    private List<AudioClip> SFXBlockBreak = new List<AudioClip>();
+    private List<AudioClip> SFXBallBounce = new List<AudioClip>();
 
     [Header("Debugging")]
     [SerializeField] bool ShowDebugMessages;
@@ -31,13 +40,36 @@ public class ScrBall : NetworkBehaviour
     {
         RB = GetComponent<Rigidbody>();
         RB.isKinematic = true;
+
+        SFXSource = GetComponent<AudioSource>();
+
+        // Get and cache all sfx for later use
+        foreach(AudioClip clip in Resources.LoadAll<AudioClip>("SFX"))
+        {
+            if (clip.name.Contains("BallSpawn"))
+            {
+                SFXBallSpawn.Add(clip);
+            }
+            else if (clip.name.Contains("BallLaunch"))
+            {
+                SFXBallLaunch.Add(clip);
+            }
+            else if (clip.name.Contains("BallBounce"))
+            {
+                SFXBallBounce.Add(clip);
+            }
+            else if (clip.name.Contains("BlockBreak"))
+            {
+                SFXBlockBreak.Add(clip);
+            }
+        }
+
         Restart();
     }
 
     // Update is called once per frame
     void Update()
     {
-
         if (!hasAuthority)
         {
             return;
@@ -66,6 +98,8 @@ public class ScrBall : NetworkBehaviour
         transform.position = SpawnLocation;
         RB.velocity = Vector3.zero;
         Launched = false;
+
+        SFXPlayRandom(SFXBallSpawn, 1.0f);
     }
 
     /// <summary>
@@ -92,12 +126,71 @@ public class ScrBall : NetworkBehaviour
 
         // Give ball initial velocity
         RB.velocity = transform.up * Speed;
+        SFXPlayRandom(SFXBallLaunch, 1.0f);
+    }
+
+
+    /// <summary>
+    ///     Randomly plays a one shot audio clip from
+    ///     a given list
+    /// </summary>
+    /// <param name="list">List of audio clips</param>
+    private void SFXPlayRandom(List<AudioClip> list, float volume)
+    {
+        // A check here because sometimes the source can be disabled
+        if (SFXSource.enabled)
+        {
+            SFXSource.PlayOneShot(list[Random.Range(0, list.Count - 1)], volume);
+        }
+    }
+
+    [Command(requiresAuthority = false)]
+    private void CmdScaleBall() => RpcScaleBall();
+
+    [ClientRpc]
+    private void RpcScaleBall()
+    {
+        // Scale the ball for a bit when they hit anything
+        StartCoroutine(BounceScale(0.2f));
+    }
+
+    private void OnCollisionEnter(Collision collision)
+    {
+        CmdScaleBall();
+
+        if (collision.gameObject.name.Contains("Block"))
+        {
+            SFXPlayRandom(SFXBlockBreak, 1.0f);
+        }
+        else
+        {
+            SFXPlayRandom(SFXBallBounce, 0.7f);
+        }
     }
 
     private void OnBecameInvisible()
     {
         // Restart if the ball can no longer be seen
         Restart();
+    }
+
+    /// <summary>
+    ///     Scales the ball using the ScaleCurve when the ball
+    ///     collides with anything (Bounces)
+    /// </summary>
+    /// <param name="totalDuration">How long the animation should be played for</param>
+    /// <returns></returns>
+    IEnumerator BounceScale(float totalDuration)
+    {
+        for (float passedTime = 0; passedTime < totalDuration;)
+        {
+            passedTime += Time.deltaTime;
+
+            float newScale = ScaleCurve.Evaluate(passedTime / totalDuration);
+            transform.localScale = new Vector3(newScale, newScale, newScale);
+
+            yield return null;
+        }
     }
 
     #region Gizmos

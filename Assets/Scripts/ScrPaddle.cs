@@ -14,7 +14,11 @@ public class ScrPaddle : NetworkBehaviour
 
     private ScrBall Ball;
     private Rigidbody RB;
+    private Renderer PaddleRenderer;
+
     private Vector3 PaddleSize;
+    private Vector3 BallOffset;
+
     private float MovementInput;
 
     [Header("Debugging")]
@@ -27,8 +31,9 @@ public class ScrPaddle : NetworkBehaviour
 
         // Initialize
         RB = GetComponent<Rigidbody>();
-        PaddleSize = GetComponent<Renderer>().bounds.size;
-
+        PaddleRenderer = GetComponent<Renderer>();
+        PaddleSize = PaddleRenderer.bounds.size;
+        BallOffset = new Vector3(0.0f, 1.15f, 0.0f);
         CmdFindBall();
     }
 
@@ -50,12 +55,12 @@ public class ScrPaddle : NetworkBehaviour
             {
                 // Set it as the paddle's ball
                 closestDistance = ballDistance;
-                Ball = ball; 
+                Ball = ball;
             }
         }
 
         // Set it's spawn to be slightly offset to the paddle
-        Ball.SpawnLocation = transform.TransformPoint(0.0f, 1.0f, 0.0f);
+        Ball.SpawnLocation = transform.TransformPoint(BallOffset);
     }
 
     /// <summary>
@@ -78,7 +83,7 @@ public class ScrPaddle : NetworkBehaviour
             Ball.LaunchBall();
         }
         
-        Ball.SpawnLocation = transform.TransformPoint(0.0f, 1.0f, 0.0f);
+        Ball.SpawnLocation = transform.TransformPoint(BallOffset);
 
         // Get raw input (For keyboards)
         MovementInput = Input.GetAxisRaw("Horizontal");
