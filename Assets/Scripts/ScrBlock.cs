@@ -6,14 +6,13 @@ using Mirror;
 public class ScrBlock : NetworkBehaviour
 {
     [Header("Block Properties")]
-    [SyncVar]
-    public Vector2Int GridPosition;
-    [SyncVar]
-    public float Points;
     public ScrBlockSpawner Spawner;
 
+    [SyncVar] public Vector2Int GridPosition;
+    [SyncVar] public float Points;
+
     [Header("Debugging")]
-    [SerializeField] bool ShowDebugMessages;
+    [SerializeField] private bool ShowDebugMessages;
 
     [Client]
     private void OnCollisionEnter(Collision collision)
@@ -35,18 +34,8 @@ public class ScrBlock : NetworkBehaviour
             Debug.Log("CmdDestroyBlock");
         }
 
-        RpcDestroyBlock();
         ScrEventManager.Instance.BlockDestroyed(Points);
         NetworkServer.Destroy(gameObject);
-    }
-
-    [ClientRpc]
-    private void RpcDestroyBlock()
-    {
-        if (ShowDebugMessages)
-        {
-            Debug.Log("RpcDestroyBlock");
-        }
     }
 
     private void OnDestroy()

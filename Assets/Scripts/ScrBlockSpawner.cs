@@ -5,13 +5,6 @@ using Mirror;
 
 public class ScrBlockSpawner : NetworkBehaviour
 {
-    private enum GizmosType
-    {
-        Always,
-        OnSelected,
-        Never,
-    }
-
     [Header("Spawn Properties")]
     [SerializeField] private GameObject BlockPrefab;
     [SerializeField] private int Columns;
@@ -24,9 +17,10 @@ public class ScrBlockSpawner : NetworkBehaviour
     private Renderer BlockRenderer;
 
     [Header("Debugging")]
-    [SerializeField] private GizmosType ShowSpawnArea;
+    [SerializeField] private bool ShowGizmos;
     [SerializeField] private Color SpawnAreaColour;
     [SerializeField] private Vector3 SpawnSize;
+
 
     // Start is called before the first frame update
     public override void OnStartServer()
@@ -120,19 +114,14 @@ public class ScrBlockSpawner : NetworkBehaviour
     #region Gizmos
     private void OnDrawGizmos()
     {
-        if (ShowSpawnArea == GizmosType.Always)
+        if (!ShowGizmos)
         {
-            DrawGizmoSpawnArea(SpawnAreaColour);
+            return;
         }
+
+        DrawGizmoSpawnArea(SpawnAreaColour);
     }
 
-    private void OnDrawGizmosSelected()
-    {
-        if (ShowSpawnArea == GizmosType.OnSelected)
-        {
-            DrawGizmoSpawnArea(SpawnAreaColour);
-        }
-    }
 
     /// <summary>
     ///     Draws the spawn area requied of the blocks

@@ -17,6 +17,9 @@ public class ScrPaddle : NetworkBehaviour
     private Vector3 PaddleSize;
     private float MovementInput;
 
+    [Header("Debugging")]
+    [SerializeField] private bool ShowGizmos;
+
     // Start is called before the first frame update
     public override void OnStartAuthority()
     {
@@ -65,15 +68,12 @@ public class ScrPaddle : NetworkBehaviour
     private void Update()
     {
         // Ensure only those with authority can control
-        if (!hasAuthority)
+        if (!hasAuthority || !Ball)
         {
             return;
         }
 
-        if (Ball)
-        {
-            Ball.SpawnLocation = transform.TransformPoint(0.0f, 1.0f, 0.0f);
-        }
+        Ball.SpawnLocation = transform.TransformPoint(0.0f, 1.0f, 0.0f);
 
         if (Input.GetKeyUp(KeyCode.Space))
         {

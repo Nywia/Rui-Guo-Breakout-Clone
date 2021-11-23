@@ -6,30 +6,25 @@ using Mirror;
 [RequireComponent(typeof(Rigidbody))]
 public class ScrBall : NetworkBehaviour
 {
-    private enum GizmosType
-    {
-        Always,
-        OnSelected,
-        Never,
-    }
+    public Vector3 SpawnLocation;
 
     [Header("Ball Properties")]
     [SerializeField] private float Speed;
     [SerializeField] private float MaxShootAngle;
 
     private Rigidbody RB;
-    public Vector3 SpawnLocation;
-    private Vector3 Direction;
+
+    private float NextAngle;
     private bool Launched;
 
     [Header("Debugging")]
     [SerializeField] bool ShowDebugMessages;
+    [SerializeField] bool ShowGizmos;
     [Space(10)]
-    [SerializeField] private GizmosType ShowMaxShootAngle;
     [SerializeField] private Color MaxShootAngleColour;
     [Space(5)]
-    [SerializeField] private GizmosType ShowSpawnAngle;
     [SerializeField] private Color SpawnAngleColour;
+
 
     // Start is called before the first frame update
     void Start()
@@ -89,9 +84,11 @@ public class ScrBall : NetworkBehaviour
         Launched = true;
         RB.isKinematic = false;
 
+        NextAngle = Random.Range(-MaxShootAngle, MaxShootAngle);
+
         // Reset rotation before setting new rotation
         RB.rotation = Quaternion.identity;
-        RB.rotation = Quaternion.Euler(0.0f, 0.0f, Random.Range(-MaxShootAngle, MaxShootAngle));
+        RB.rotation = Quaternion.Euler(0.0f, 0.0f, NextAngle);
 
         RB.velocity = transform.up * Speed;
     }
@@ -105,57 +102,57 @@ public class ScrBall : NetworkBehaviour
     #region Gizmos
     private void OnDrawGizmos()
     {
-        if (ShowSpawnAngle == GizmosType.Always)
+        if (!hasAuthority || !ShowGizmos)
         {
-            DrawGizmoSpawnAngle(SpawnAngleColour);
+            return;
         }
 
-        if (ShowMaxShootAngle == GizmosType.Always)
-        {
-            DrawGizmoMaxShootAngle(MaxShootAngleColour);
-        }
+        DrawGizmoNextAngle(SpawnAngleColour);
+        DrawGizmoMaxShootAngle(MaxShootAngleColour);
     }
 
-    private void OnDrawGizmosSelected()
-    {
-        if (ShowSpawnAngle == GizmosType.OnSelected)
-        {
-            DrawGizmoSpawnAngle(SpawnAngleColour);
-        }
-
-        if (ShowMaxShootAngle == GizmosType.OnSelected)
-        {
-            DrawGizmoMaxShootAngle(MaxShootAngleColour);
-        }
-    }
-
+    /// <summary>
+    ///     Draws the left and right lines to show
+    ///     the maximum angle the ball can be launched 
+    /// </summary>
+    /// <param name="colour">Colour of the lines</param>
     private void DrawGizmoMaxShootAngle(Color colour)
     {
         Gizmos.color = colour;
 
+        Vector3 rightAngle = Quaternion.AngleAxis(MaxShootAngle, Vector3.forward) * Vector3.up * 3.0f;
+        Vector3 leftAngle = Quaternion.AngleAxis(-MaxShootAngle, Vector3.forward) * Vector3.up * 3.0f;
+
         if (Application.isPlaying)
         {
-            Gizmos.DrawLine(SpawnLocation, SpawnLocation + (Quaternion.AngleAxis(MaxShootAngle, Vector3.forward) * Vector3.up * 3.0f));
-            Gizmos.DrawLine(SpawnLocation, SpawnLocation + (Quaternion.AngleAxis(-MaxShootAngle, Vector3.forward) * Vector3.up * 3.0f));
+            Gizmos.DrawLine(SpawnLocation, SpawnLocation + leftAngle);
+            Gizmos.DrawLine(SpawnLocation, SpawnLocation + rightAngle);
         }
         else
         {
-            Gizmos.DrawLine(transform.position, transform.position + (Quaternion.AngleAxis(MaxShootAngle, Vector3.forward) * Vector3.up * 3.0f));
-            Gizmos.DrawLine(transform.position, transform.position + (Quaternion.AngleAxis(-MaxShootAngle, Vector3.forward) * Vector3.up * 3.0f));
+            Gizmos.DrawLine(transform.position, transform.position + leftAngle);
+            Gizmos.DrawLine(transform.position, transform.position + rightAngle);
         }
     }
 
-    private void DrawGizmoSpawnAngle(Color colour)
+    /// <summary>
+    ///     Draws the next angle that the ball
+    ///     is going to launch towards
+    /// </summary>
+    /// <param name="colour">Colour of the line</param>
+    private void DrawGizmoNextAngle(Color colour)
     {
         Gizmos.color = colour;
 
+        Vector3 shootAngle = Quaternion.AngleAxis(NextAngle, Vector3.forward) * Vector3.up * 3;
+
         if (Application.isPlaying)
         {
-            Gizmos.DrawRay(SpawnLocation, Direction.normalized * 3);
+            Gizmos.DrawRay(SpawnLocation, shootAngle);
         }
         else
         {
-            Gizmos.DrawRay(transform.position, Direction.normalized * 3);
+            Gizmos.DrawRay(transform.position, shootAngle);
         }
 
     }

@@ -175,12 +175,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   syncMode: 0
   syncInterval: 0.1
-  Paddle: {fileID: 0}
+  SpawnLocation: {x: 0, y: 0, z: 0}
   Speed: 10
   MaxShootAngle: 45
-  SpawnLocation: {x: 0, y: 0, z: 0}
   ShowDebugMessages: 0
-  ShowMaxShootAngle: 1
+  ShowGizmos: 0
   MaxShootAngleColour: {r: 0.6764121, g: 0, b: 1, a: 0.39215687}
-  ShowSpawnAngle: 1
   SpawnAngleColour: {r: 1, g: 0, b: 0, a: 0.39215687}
