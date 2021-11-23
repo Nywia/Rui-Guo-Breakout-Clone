@@ -14,7 +14,7 @@ public class ScrBall : NetworkBehaviour
 
     private Rigidbody RB;
 
-    private float NextAngle;
+    private float ShootAngle;
     private bool Launched;
 
     [Header("Debugging")]
@@ -84,12 +84,13 @@ public class ScrBall : NetworkBehaviour
         Launched = true;
         RB.isKinematic = false;
 
-        NextAngle = Random.Range(-MaxShootAngle, MaxShootAngle);
+        ShootAngle = Random.Range(-MaxShootAngle, MaxShootAngle);
 
         // Reset rotation before setting new rotation
-        RB.rotation = Quaternion.identity;
-        RB.rotation = Quaternion.Euler(0.0f, 0.0f, NextAngle);
+        transform.rotation = Quaternion.identity;
+        transform.rotation = Quaternion.Euler(0.0f, 0.0f, ShootAngle);
 
+        // Give ball initial velocity
         RB.velocity = transform.up * Speed;
     }
 
@@ -144,7 +145,7 @@ public class ScrBall : NetworkBehaviour
     {
         Gizmos.color = colour;
 
-        Vector3 shootAngle = Quaternion.AngleAxis(NextAngle, Vector3.forward) * Vector3.up * 3;
+        Vector3 shootAngle = Quaternion.AngleAxis(ShootAngle, Vector3.forward) * Vector3.up * 3;
 
         if (Application.isPlaying)
         {

@@ -72,13 +72,13 @@ public class ScrPaddle : NetworkBehaviour
         {
             return;
         }
-
-        Ball.SpawnLocation = transform.TransformPoint(0.0f, 1.0f, 0.0f);
-
+        
         if (Input.GetKeyUp(KeyCode.Space))
         {
             Ball.LaunchBall();
         }
+        
+        Ball.SpawnLocation = transform.TransformPoint(0.0f, 1.0f, 0.0f);
 
         // Get raw input (For keyboards)
         MovementInput = Input.GetAxisRaw("Horizontal");
@@ -87,12 +87,20 @@ public class ScrPaddle : NetworkBehaviour
     // Fixed update for rigidbodies
     void FixedUpdate()
     {
+        // Ensure only those with authority can control
+        if (!hasAuthority || !Ball)
+        {
+            return;
+        }
+
         // Let paddle move right if it's not hitting right wall and vice versa
         if (MovementInput > 0 && !HitWallRight() ||
             MovementInput < 0 && !HitWallLeft())
         {
             RB.MovePosition(transform.position + (new Vector3(MovementInput, 0.0f) * Speed * Time.deltaTime));
         }
+
+
     }
 
     /// <summary>
