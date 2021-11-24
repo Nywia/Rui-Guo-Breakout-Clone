@@ -31,4 +31,15 @@ public class ScrNetworkManagerBreakout : NetworkManager
         // Calls the base functionality (Actually destroys the player)
         base.OnServerDisconnect(conn);
     }
+
+    // Do things here
+    public override void OnClientConnect(NetworkConnection conn)
+    {
+        base.OnClientConnect(conn);
+    }
+
+    public override void OnServerConnect(NetworkConnection conn)
+    {
+        base.OnServerConnect(conn);
+    }
 }

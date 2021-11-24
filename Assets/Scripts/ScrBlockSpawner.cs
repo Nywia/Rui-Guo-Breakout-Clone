@@ -27,7 +27,7 @@ public class ScrBlockSpawner : NetworkBehaviour
     {
         base.OnStartServer();
 
-        BlockRenderer = BlockPrefab.GetComponent<Renderer>();
+        BlockRenderer = BlockPrefab.GetComponentInChildren<Renderer>();
         SpawnBlocks();
     }
 
@@ -35,14 +35,14 @@ public class ScrBlockSpawner : NetworkBehaviour
     {
         base.OnStartClient();
 
-        BlockRenderer = BlockPrefab.GetComponent<Renderer>();
+        BlockRenderer = BlockPrefab.GetComponentInChildren<Renderer>();
         SetBlocks();
     }
 
     /// <summary>
     ///     Spawns x columns and y rows of the given 
     ///     BlockPrefab from the current position of 
-    ///     the spawner
+    ///     the spawner on the server
     /// </summary>
     [Server]
     public void SpawnBlocks()
@@ -58,7 +58,7 @@ public class ScrBlockSpawner : NetworkBehaviour
             {
                 GameObject go = Instantiate(BlockPrefab);
                 ScrBlock blockScript = go.GetComponent<ScrBlock>();
-                Renderer blockRenderer = go.GetComponent<Renderer>();
+                Renderer blockRenderer = go.GetComponentInChildren<Renderer>();
 
                 if (blockScript)
                 {
@@ -84,9 +84,17 @@ public class ScrBlockSpawner : NetworkBehaviour
         RpcSetBlocks();
     }
 
+    /// <summary>
+    ///     Tells all the clients to set their blocks
+    /// </summary>
     [ClientRpc]
     private void RpcSetBlocks() => SetBlocks();
 
+    /// <summary>
+    ///     Finds all the currently spawned blocks
+    ///     on the client and then sets its position 
+    ///     and colour to the right values
+    /// </summary>
     [Client]
     public void SetBlocks()
     {
@@ -97,7 +105,7 @@ public class ScrBlockSpawner : NetworkBehaviour
             int gridPosX = block.GridPosition.x;
             int gridPosY = block.GridPosition.y;
 
-            Renderer blockRenderer = block.gameObject.GetComponent<Renderer>();
+            Renderer blockRenderer = block.gameObject.GetComponentInChildren<Renderer>();
             float blockSizeX = blockRenderer.bounds.size.x;
             float blockSizeY = blockRenderer.bounds.size.y;
 
@@ -110,6 +118,17 @@ public class ScrBlockSpawner : NetworkBehaviour
         }
     }
 
+    /// <summary>
+    ///     Tells all the clients to scale all their blocks
+    /// </summary>
+    [Server]
+    public void ScaleBlocks()
+    {
+        foreach (ScrBlock block in FindObjectsOfType<ScrBlock>())
+        {
+            block.ScaleBlock();
+        }
+    }
 
     #region Gizmos
     private void OnDrawGizmos()

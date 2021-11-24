@@ -12,12 +12,16 @@ public class ScrBall : NetworkBehaviour
     [SerializeField] private float Speed;
     [SerializeField] private float MaxShootAngle;
 
+    [SyncVar] private bool Launched;
+
     private Rigidbody RB;
     private float ShootAngle;
-    private bool Launched;
 
     [Header("Ball Juice")]
     [SerializeField] private AnimationCurve ScaleCurve;
+
+    private TrailRenderer BallTrail;
+    private ScrCamera CameraScript;
 
     [Header("Ball Audio")]
     private AudioSource SFXSource;
@@ -42,9 +46,11 @@ public class ScrBall : NetworkBehaviour
         RB.isKinematic = true;
 
         SFXSource = GetComponent<AudioSource>();
+        CameraScript = FindObjectOfType<ScrCamera>();
+        BallTrail = GetComponentInChildren<TrailRenderer>();
 
         // Get and cache all sfx for later use
-        foreach(AudioClip clip in Resources.LoadAll<AudioClip>("SFX"))
+        foreach (AudioClip clip in Resources.LoadAll<AudioClip>("SFX"))
         {
             if (clip.name.Contains("BallSpawn"))
             {
@@ -99,6 +105,10 @@ public class ScrBall : NetworkBehaviour
         RB.velocity = Vector3.zero;
         Launched = false;
 
+        // Reset trail
+        BallTrail.Clear();
+        BallTrail.time = 0.5f;
+
         SFXPlayRandom(SFXBallSpawn, 1.0f);
     }
 
@@ -117,15 +127,19 @@ public class ScrBall : NetworkBehaviour
 
         Launched = true;
         RB.isKinematic = false;
+        BallTrail.time = 1.5f;
 
+
+        // Set shooting angle
         ShootAngle = Random.Range(-MaxShootAngle, MaxShootAngle);
-
-        // Reset rotation before setting new rotation
-        transform.rotation = Quaternion.identity;
         transform.rotation = Quaternion.Euler(0.0f, 0.0f, ShootAngle);
 
         // Give ball initial velocity
         RB.velocity = transform.up * Speed;
+
+        // Reset rotation as it's no longer needed
+        transform.rotation = Quaternion.identity;
+
         SFXPlayRandom(SFXBallLaunch, 1.0f);
     }
 
@@ -144,9 +158,17 @@ public class ScrBall : NetworkBehaviour
         }
     }
 
+    /// <summary>
+    ///     Get server to call scale ball on 
+    ///     all clients. Authority is false to allow scaling on 
+    ///     Ball to Ball collisions.
+    /// </summary>
     [Command(requiresAuthority = false)]
     private void CmdScaleBall() => RpcScaleBall();
 
+    /// <summary>
+    ///     Scale the ball on all clients
+    /// </summary>
     [ClientRpc]
     private void RpcScaleBall()
     {
@@ -154,17 +176,27 @@ public class ScrBall : NetworkBehaviour
         StartCoroutine(BounceScale(0.2f));
     }
 
+    /// <summary>
+    ///     Tell the server to scale the blocks
+    /// </summary>
+    [Command]
+    private void CmdScaleBlocks() => FindObjectOfType<ScrBlockSpawner>().ScaleBlocks();
+
     private void OnCollisionEnter(Collision collision)
     {
         CmdScaleBall();
 
         if (collision.gameObject.name.Contains("Block"))
         {
+            CmdScaleBlocks();
             SFXPlayRandom(SFXBlockBreak, 1.0f);
+            CameraScript.CmdPushCamera(RB.velocity.normalized, 5.0f, 0.1f);
+            StartCoroutine(TimeSlow(0.1f, 0.05f));
         }
         else
         {
             SFXPlayRandom(SFXBallBounce, 0.7f);
+            CameraScript.CmdPushCamera(RB.velocity.normalized, 2.5f, 0.1f);
         }
     }
 
@@ -178,19 +210,33 @@ public class ScrBall : NetworkBehaviour
     ///     Scales the ball using the ScaleCurve when the ball
     ///     collides with anything (Bounces)
     /// </summary>
-    /// <param name="totalDuration">How long the animation should be played for</param>
+    /// <param name="duration">How long the animation should be played for</param>
     /// <returns></returns>
-    IEnumerator BounceScale(float totalDuration)
+    IEnumerator BounceScale(float duration)
     {
-        for (float passedTime = 0; passedTime < totalDuration;)
+        for (float elapsedTime = 0; elapsedTime < duration; elapsedTime += Time.deltaTime)
         {
-            passedTime += Time.deltaTime;
-
-            float newScale = ScaleCurve.Evaluate(passedTime / totalDuration);
+            float newScale = ScaleCurve.Evaluate(elapsedTime / duration);
             transform.localScale = new Vector3(newScale, newScale, newScale);
 
             yield return null;
         }
+    }
+
+    /// <summary>
+    ///     Slow down the game a given amount 
+    ///     for a set period of time 
+    /// </summary>
+    /// <param name="scale">The new timeScale</param>
+    /// <param name="duration">How long to slow down for</param>
+    /// <returns></returns>
+    IEnumerator TimeSlow(float scale, float duration)
+    {
+        Time.timeScale = scale;
+
+        yield return new WaitForSecondsRealtime(duration);
+
+        Time.timeScale = 1.0f;
     }
 
     #region Gizmos
