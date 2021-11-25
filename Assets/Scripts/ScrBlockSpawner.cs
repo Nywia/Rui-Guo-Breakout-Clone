@@ -126,7 +126,19 @@ public class ScrBlockSpawner : NetworkBehaviour
     {
         foreach (ScrBlock block in FindObjectsOfType<ScrBlock>())
         {
-            block.ScaleBlock();
+            block.BlockScale();
+        }
+    }
+
+    /// <summary>
+    ///     Tells all the clients to scale all their blocks
+    /// </summary>
+    [Server]
+    public void QuiverBlocks()
+    {
+        foreach (ScrBlock block in FindObjectsOfType<ScrBlock>())
+        {
+            block.BlockQuiver();
         }
     }
 

@@ -6,21 +6,11 @@ using Mirror;
 public class ScrCamera : NetworkBehaviour
 {
     private Vector3 StartingPosition;
-    private bool BeingPushed;
 
     // Start is called before the first frame update
     void Start()
     {
         StartingPosition = transform.position;
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-        //if (!BeingPushed && transform.position != StartingPosition)
-        //{
-        //    StartCoroutine(Return(0.5f));
-        //}
     }
 
     [Command(requiresAuthority = false)]
@@ -39,13 +29,10 @@ public class ScrCamera : NetworkBehaviour
     {
         for (float elapsedTime = 0; elapsedTime < duration; elapsedTime += Time.deltaTime)
         {
-            BeingPushed = true;
-
             transform.position += direction * intensity * Time.deltaTime;
             yield return null;
         }
 
-        BeingPushed = false;
         StartCoroutine(Return(0.1f));
     }
 

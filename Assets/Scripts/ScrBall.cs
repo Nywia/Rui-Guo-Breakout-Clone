@@ -1,9 +1,11 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.VFX;
 using Mirror;
 
-[RequireComponent(typeof(Rigidbody), typeof(AudioSource))]
+[RequireComponent(typeof(Rigidbody), 
+                  typeof(AudioSource))]
 public class ScrBall : NetworkBehaviour
 {
     public Vector3 SpawnLocation;
@@ -11,17 +13,20 @@ public class ScrBall : NetworkBehaviour
     [Header("Ball Properties")]
     [SerializeField] private float Speed;
     [SerializeField] private float MaxShootAngle;
-
     [SyncVar] private bool Launched;
 
     private Rigidbody RB;
     private float ShootAngle;
 
+
     [Header("Ball Juice")]
     [SerializeField] private AnimationCurve ScaleCurve;
+    [SerializeField] private GameObject VFXImpactPrefab;
 
     private TrailRenderer BallTrail;
     private ScrCamera CameraScript;
+    private Transform BallMesh;
+
 
     [Header("Ball Audio")]
     private AudioSource SFXSource;
@@ -29,6 +34,15 @@ public class ScrBall : NetworkBehaviour
     private List<AudioClip> SFXBallLaunch = new List<AudioClip>();
     private List<AudioClip> SFXBlockBreak = new List<AudioClip>();
     private List<AudioClip> SFXBallBounce = new List<AudioClip>();
+
+    private enum ClipType
+    {
+        Spawn,
+        Break,
+        Launch,
+        Bounce,
+    }
+
 
     [Header("Debugging")]
     [SerializeField] bool ShowDebugMessages;
@@ -46,8 +60,10 @@ public class ScrBall : NetworkBehaviour
         RB.isKinematic = true;
 
         SFXSource = GetComponent<AudioSource>();
-        CameraScript = FindObjectOfType<ScrCamera>();
         BallTrail = GetComponentInChildren<TrailRenderer>();
+
+        CameraScript = FindObjectOfType<ScrCamera>();
+        BallMesh = transform.Find("BallMesh");
 
         // Get and cache all sfx for later use
         foreach (AudioClip clip in Resources.LoadAll<AudioClip>("SFX"))
@@ -68,6 +84,12 @@ public class ScrBall : NetworkBehaviour
             {
                 SFXBlockBreak.Add(clip);
             }
+        }
+
+        // Make sure there is a VFX asset
+        if (!VFXImpactPrefab)
+        {
+            VFXImpactPrefab = Resources.Load<GameObject>("VFX/VFXHit");
         }
 
         Restart();
@@ -103,13 +125,17 @@ public class ScrBall : NetworkBehaviour
         // Reset back to spawn location and choose a random direction
         transform.position = SpawnLocation;
         RB.velocity = Vector3.zero;
+        RB.isKinematic = true;
         Launched = false;
 
         // Reset trail
         BallTrail.Clear();
         BallTrail.time = 0.5f;
 
-        SFXPlayRandom(SFXBallSpawn, 1.0f);
+        if (hasAuthority)
+        {
+            CmdSFXPlayRandom(ClipType.Spawn, 1.0f);
+        }
     }
 
     /// <summary>
@@ -140,22 +166,23 @@ public class ScrBall : NetworkBehaviour
         // Reset rotation as it's no longer needed
         transform.rotation = Quaternion.identity;
 
-        SFXPlayRandom(SFXBallLaunch, 1.0f);
+        if (hasAuthority)
+        {
+            CmdSFXPlayRandom(ClipType.Launch, 1.0f);
+        }
     }
 
 
     /// <summary>
-    ///     Randomly plays a one shot audio clip from
-    ///     a given list
+    ///     Chooses a random SFX and then plays a 
+    ///     one shot on all clients 
     /// </summary>
-    /// <param name="list">List of audio clips</param>
-    private void SFXPlayRandom(List<AudioClip> list, float volume)
+    /// <param name="clipType"></param>
+    /// <param name="volume"></param>
+    [Command]
+    private void CmdSFXPlayRandom(ClipType clipType, float volume)
     {
-        // A check here because sometimes the source can be disabled
-        if (SFXSource.enabled)
-        {
-            SFXSource.PlayOneShot(list[Random.Range(0, list.Count - 1)], volume);
-        }
+        RpcSFXPlayRandom(clipType, volume);
     }
 
     /// <summary>
@@ -165,6 +192,33 @@ public class ScrBall : NetworkBehaviour
     /// </summary>
     [Command(requiresAuthority = false)]
     private void CmdScaleBall() => RpcScaleBall();
+
+    /// <summary>
+    ///     Tell the server to scale the blocks
+    /// </summary>
+    [Command]
+    private void CmdScaleBlocks() => FindObjectOfType<ScrBlockSpawner>().ScaleBlocks();
+
+    /// <summary>
+    ///     Tell the server to scale the blocks
+    /// </summary>
+    [Command]
+    private void CmdQuiverBlocks() => FindObjectOfType<ScrBlockSpawner>().QuiverBlocks();
+
+    /// <summary>
+    ///     Plays the hit VFX at position and scale 
+    /// </summary>
+    /// <remarks>
+    ///     Tells server to call <seealso cref="RpcPlayVFX(Vector3, Vector3)"/> 
+    ///     on all the clients
+    /// </remarks>
+    /// <param name="position">Where to play the VFX</param>
+    /// <param name="scale">Scale of the VFX</param>
+    [Command]
+    private void CmdPlayVFX(Vector3 position, Vector3 scale)
+    {
+        RpcPlayVFX(position, scale);
+    }
 
     /// <summary>
     ///     Scale the ball on all clients
@@ -177,33 +231,110 @@ public class ScrBall : NetworkBehaviour
     }
 
     /// <summary>
-    ///     Tell the server to scale the blocks
+    ///     Plays the hit VFX at position and scale 
     /// </summary>
-    [Command]
-    private void CmdScaleBlocks() => FindObjectOfType<ScrBlockSpawner>().ScaleBlocks();
-
-    private void OnCollisionEnter(Collision collision)
+    /// <remarks>
+    ///     NOTE: VFX will get -1.0f added to its Z 
+    ///     position in order to bring it in front of 
+    ///     the ball
+    /// </remarks>
+    /// <param name="position">Where to play the VFX</param>
+    /// <param name="scale">Scale of the VFX</param>
+    [ClientRpc]
+    private void RpcPlayVFX(Vector3 position, Vector3 scale)
     {
-        CmdScaleBall();
+        // -1.0 here on the position to bring it in front of the ball
+        GameObject go = Instantiate(VFXImpactPrefab, position, Quaternion.identity);
+        go.transform.localScale = scale;
+        Destroy(go, 0.5f);
+    }
 
-        if (collision.gameObject.name.Contains("Block"))
+    /// <summary>
+    ///     Plays a random SFX on the clients given
+    ///     the type of the clip
+    /// </summary>
+    /// <param name="clipType">The type of clip to play</param>
+    /// <param name="volume">The volume to play it at</param>
+    [ClientRpc]
+    private void RpcSFXPlayRandom(ClipType clipType, float volume)
+    {
+        int randomIndex;
+
+        // A check here in case the source is disabled
+        if (!SFXSource.enabled)
         {
-            CmdScaleBlocks();
-            SFXPlayRandom(SFXBlockBreak, 1.0f);
-            CameraScript.CmdPushCamera(RB.velocity.normalized, 5.0f, 0.1f);
-            StartCoroutine(TimeSlow(0.1f, 0.05f));
+            return;
         }
-        else
+
+        // Determine the type of clip and play from that list
+        switch (clipType)
         {
-            SFXPlayRandom(SFXBallBounce, 0.7f);
-            CameraScript.CmdPushCamera(RB.velocity.normalized, 2.5f, 0.1f);
+            case ClipType.Spawn:
+                randomIndex = Random.Range(0, SFXBallSpawn.Count - 1);
+                SFXSource.PlayOneShot(SFXBallSpawn[randomIndex], volume);
+                break;
+
+            case ClipType.Break:
+                randomIndex = Random.Range(0, SFXBlockBreak.Count - 1);
+                SFXSource.PlayOneShot(SFXBlockBreak[randomIndex], volume);
+                break;
+
+            case ClipType.Launch:
+                randomIndex = Random.Range(0, SFXBallLaunch.Count - 1);
+                SFXSource.PlayOneShot(SFXBallLaunch[randomIndex], volume);
+                break;
+
+            case ClipType.Bounce:
+                randomIndex = Random.Range(0, SFXBallBounce.Count - 1);
+                SFXSource.PlayOneShot(SFXBallBounce[randomIndex], volume);
+                break;
+
+            default:
+
+                if (ShowDebugMessages)
+                {
+                    Debug.Log("Unknown clip type was given!", gameObject);
+                }
+                break;
         }
     }
 
-    private void OnBecameInvisible()
+    private void OnCollisionEnter(Collision collision)
     {
-        // Restart if the ball can no longer be seen
-        Restart();
+        // Authority check
+        if (!hasAuthority)
+        {
+            return;
+        }
+
+        // Scale the ball on all collisions
+        CmdScaleBall();
+
+        // Play the other juice effects depending on what the ball hit
+        if (collision.gameObject.name.Contains("Block"))
+        {
+            StartCoroutine(TimeSlow(0.1f, 0.05f));
+            CameraScript.CmdPushCamera(RB.velocity.normalized, 5.0f, 0.1f);
+            CmdPlayVFX(collision.GetContact(0).point, Vector3.one * 5.0f);
+            CmdScaleBlocks();
+            CmdSFXPlayRandom(ClipType.Break, 1.0f);
+        }
+        else
+        {
+            CameraScript.CmdPushCamera(RB.velocity.normalized, 2.5f, 0.1f);
+            CmdQuiverBlocks();
+            CmdPlayVFX(collision.GetContact(0).point, Vector3.one * 2.5f);
+            CmdSFXPlayRandom(ClipType.Bounce, 0.7f);
+        }
+    }
+
+    private void OnTriggerEnter(Collider other)
+    {
+        if (other.name.Contains("KillFloor"))
+        {
+            // Restart if the ball collides the kill floor
+            Restart();
+        }
     }
 
     /// <summary>
@@ -217,7 +348,7 @@ public class ScrBall : NetworkBehaviour
         for (float elapsedTime = 0; elapsedTime < duration; elapsedTime += Time.deltaTime)
         {
             float newScale = ScaleCurve.Evaluate(elapsedTime / duration);
-            transform.localScale = new Vector3(newScale, newScale, newScale);
+            BallMesh.localScale = Vector3.one * newScale;
 
             yield return null;
         }
@@ -233,9 +364,7 @@ public class ScrBall : NetworkBehaviour
     IEnumerator TimeSlow(float scale, float duration)
     {
         Time.timeScale = scale;
-
         yield return new WaitForSecondsRealtime(duration);
-
         Time.timeScale = 1.0f;
     }
 
